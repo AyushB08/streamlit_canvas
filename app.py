@@ -258,14 +258,13 @@ def process_image_drawing(prefix, column, show_base_mask=True, show_ref_mask=Fal
             height=height,
             width=width,
             drawing_mode=drawing_mode,
-            point_display_radius=5,
             key=f"{prefix}_canvas",
             initial_drawing=initial_drawing
         )
         
         if canvas_result.image_data is not None:
             st.session_state[f"{prefix}_updated_mask"] = Image.fromarray(canvas_result.image_data[:,:,3], mode='L')
-
+            
 def create_image_object(width, height, image_b64):
     return {
         "type": "image",
