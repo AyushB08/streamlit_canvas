@@ -150,7 +150,7 @@ def process_image(prefix):
             height=height,
             width=width,
             drawing_mode="point",
-            point_display_radius=3,
+      
             key=f"{prefix}_canvas",
         )
 
@@ -258,7 +258,7 @@ def process_image_drawing(prefix, column, show_base_mask=True, show_ref_mask=Fal
             height=height,
             width=width,
             drawing_mode=drawing_mode,
-            point_display_radius=5,
+    
             key=f"{prefix}_canvas",
             initial_drawing=initial_drawing
         )
