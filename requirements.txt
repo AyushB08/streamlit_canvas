@@ -1,5 +1,5 @@
 streamlit
-streamlit-drawable-canvas==8.0.0
+streamlit-drawable-canvas
 Pillow
 numpy
 matplotlib
