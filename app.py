@@ -150,7 +150,6 @@ def process_image(prefix):
             height=height,
             width=width,
             drawing_mode="point",
-            point_display_radius=3,
             key=f"{prefix}_canvas",
         )
 
