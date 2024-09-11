@@ -149,7 +149,7 @@ def process_image(prefix):
             update_streamlit=True,
             height=height,
             width=width,
-            drawing_mode="point",
+            drawing_mode="circle", 
             key=f"{prefix}_canvas",
         )
 
@@ -158,7 +158,8 @@ def process_image(prefix):
             current_red_points = []
 
             for obj in canvas_result.json_data["objects"]:
-                point = (obj["left"], obj["top"])
+                
+                point = (obj["left"] + obj["radius"], obj["top"] + obj["radius"])
                 if obj["stroke"] == "#00FF00":
                     current_green_points.append(point)
                 elif obj["stroke"] == "#FF0000":  
@@ -196,7 +197,7 @@ def create_mask(prefix):
         mask = SAM2(image=sam2_input_image, points=np.array(sam_points), labels=np.array(sam_labels), rgba=(50, 50, 50, 255))
     
     st.session_state[f"{prefix}_mask"] = mask.resize(display_size)
-
+    
 def create_mask_overlay(image, mask, opacity=0.5):
     mask_np = np.array(mask.convert('L'))
     mask_np = cv2.resize(mask_np, (256, 256))
