@@ -409,8 +409,10 @@ def main():
 
     elif page == "Draw":
         col1, col2 = st.columns(2)
-        show_base_mask = st.checkbox("Show Base Mask", value=True, key="show_base_mask")
-        show_ref_mask = st.checkbox("Show Reference Mask", value=True, key="show_ref_mask")
+        show_base_mask = True
+        if st.session_state.use_sam2:
+            show_base_mask = st.checkbox("Show Base Mask", value=True, key="show_base_mask")
+        show_ref_mask = True
         clone_ref_mask = st.checkbox("Clone Reference Mask to Base", value=False, key="clone_ref_mask")
 
         with col1:
