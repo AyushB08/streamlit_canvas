@@ -42,13 +42,9 @@ def create_colored_mask_image(mask, R, G, B, A):
     return image
 
 def image_to_base64(image: Image) -> str:
-    buffer = BytesIO()
-    
-    image.save(buffer, format='PNG')
-    buffer.seek(0)
-    image_base64 = base64.b64encode(buffer.read()).decode('utf-8')
-
-    return image_base64
+    buffered = BytesIO()
+    image.save(buffered, format="PNG")
+    return base64.b64encode(buffered.getvalue()).decode()
 
 def load_image_from_base64(base64_str: str) -> Image.Image:
     image_bytes = base64.b64decode(base64_str)
@@ -197,8 +193,52 @@ def create_mask(prefix):
         mask = SAM2(image=sam2_input_image, points=np.array(sam_points), labels=np.array(sam_labels), rgba=(50, 50, 50, 255))
     
     st.session_state[f"{prefix}_mask"] = mask.resize(display_size)
+
+def submit_mask_data(base_url, reference_url, email):
+    if "base_updated_mask" in st.session_state and "reference_updated_mask" in st.session_state:
+        base_mask = np.array(st.session_state["base_updated_mask"])
+        ref_mask = np.array(st.session_state["reference_updated_mask"])
+
+        base_mask = (base_mask > 0).astype(np.uint8) * 255
+        ref_mask = (ref_mask > 0).astype(np.uint8) * 255
+
+        buffered_base = BytesIO()
+        Image.fromarray(base_mask).save(buffered_base, format="PNG")
+        base64_base = base64.b64encode(buffered_base.getvalue()).decode()
+
+        buffered_ref = BytesIO()
+        Image.fromarray(ref_mask).save(buffered_ref, format="PNG")
+        base64_ref = base64.b64encode(buffered_ref.getvalue()).decode()
+
+        backend_url = "https://platform-backend-64nm.onrender.com/upload-mask"
+        if not backend_url:
+            st.error("Backend URL is not set. Please check your environment variables.")
+            return
+
+        try:
+            response = requests.post(
+                backend_url,
+                json={
+                    "base_image": base_url,
+                    "reference_image": reference_url,
+                    "base_mask": base64_base,
+                    "reference_mask": base64_ref,
+                    "email": email
+                },
+                headers={'Content-Type': 'application/json'}
+            )
+
+            if response.status_code == 200:
+                st.success("Mask data submitted successfully!")
+            else:
+                st.error(f"Failed to submit mask data. Status code: {response.status_code}")
+                st.error(f"Response content: {response.text}")
+        except requests.exceptions.RequestException as e:
+            st.error(f"An error occurred while submitting the mask data: {str(e)}")
+    else:
+        st.error("Please create masks for both images before submitting.")
     
-def create_mask_overlay(image, mask, opacity=0.5):
+def create_mask_overlay(image, mask, opacity=0.8):
     mask_np = np.array(mask.convert('L'))
     mask_np = cv2.resize(mask_np, (256, 256))
 
@@ -208,7 +248,7 @@ def create_mask_overlay(image, mask, opacity=0.5):
 
     return Image.fromarray(mask_overlay, 'RGBA')
 
-def process_image_drawing(prefix, column, show_base_mask=True, show_ref_mask=False):
+def process_image_drawing(prefix, column, show_mask=True, clone_mask=False):
     if f"{prefix}_canvas_data" not in st.session_state:
         st.session_state[f"{prefix}_canvas_data"] = {
             "version": "4.4.0",
@@ -229,25 +269,22 @@ def process_image_drawing(prefix, column, show_base_mask=True, show_ref_mask=Fal
         )
 
         stroke_width = st.slider("Stroke width:", 1, 150, 75, key=f"{prefix}_stroke_width")
-        stroke_color = st.color_picker("Stroke color:", "#646464", key=f"{prefix}_stroke_color")
+        
+        
+        alpha = int(80 * 2.55)
+        
+        stroke_color = f"rgba({128},{128},{128},{60/100})"
 
         initial_drawing = {"version": "4.4.0", "objects": []}
 
-        if prefix == 'base':
-            if show_base_mask and mask is not None:
-                mask_overlay = create_mask_overlay(image, mask)
-                mask_b64 = image_to_base64(mask_overlay)
-                initial_drawing["objects"].append(create_image_object(width, height, mask_b64))
-
-            if show_ref_mask and "reference_updated_mask" in st.session_state:
-                ref_mask_overlay = create_mask_overlay(image, st.session_state["reference_updated_mask"])
-                ref_mask_b64 = image_to_base64(ref_mask_overlay)
-                initial_drawing["objects"].append(create_image_object(width, height, ref_mask_b64))
-
-        elif prefix == 'reference' and mask is not None:
-            mask_overlay = create_mask_overlay(image, mask)
+        if show_mask and mask is not None and st.session_state.use_sam2:
+            mask_overlay = create_mask_overlay(image, mask, opacity=0.8)
             mask_b64 = image_to_base64(mask_overlay)
             initial_drawing["objects"].append(create_image_object(width, height, mask_b64))
+
+        if clone_mask and "reference_canvas_data" in st.session_state:
+            ref_canvas_data = st.session_state["reference_canvas_data"]
+            initial_drawing["objects"].extend(ref_canvas_data.get("objects", []))
 
         canvas_result = st_canvas(
             fill_color="rgba(0, 0, 0, 0)",  
@@ -264,6 +301,10 @@ def process_image_drawing(prefix, column, show_base_mask=True, show_ref_mask=Fal
         
         if canvas_result.image_data is not None:
             st.session_state[f"{prefix}_updated_mask"] = Image.fromarray(canvas_result.image_data[:,:,3], mode='L')
+        
+        st.session_state[f"{prefix}_canvas_data"] = canvas_result.json_data
+
+      
             
 def create_image_object(width, height, image_b64):
     return {
@@ -341,7 +382,6 @@ def main():
         st.error("No image URL provided in query parameters.")
         return
 
-    # Initialize session state variables
     if 'base_original_image' not in st.session_state:
         st.session_state.base_original_image = fetch_and_resize_image(base_url)
         st.session_state.base_image = st.session_state.base_original_image.resize((256, 256))
@@ -350,73 +390,39 @@ def main():
         st.session_state.reference_original_image = fetch_and_resize_image(reference_url)
         st.session_state.reference_image = st.session_state.reference_original_image.resize((256, 256))
 
-    if 'base_mask_created' not in st.session_state:
-        st.session_state.base_mask_created = False
-    
-    if 'reference_mask_created' not in st.session_state:
-        st.session_state.reference_mask_created = False
+    if 'use_sam2' not in st.session_state:
+        st.session_state.use_sam2 = False
 
     page = st.sidebar.radio("Select Mode", ["Point", "Draw"])
 
     if page == "Point":
-        st.subheader("Reference Image")
-        process_image("reference")
+        st.session_state.use_sam2 = st.checkbox("Use SAM2 for mask generation", value=False)
         
-        st.subheader("Base Image")
-        process_image("base")
-
-        if st.session_state.reference_mask_created and st.session_state.base_mask_created:
-            st.success("Both masks have been created. You can now switch to the Draw mode.")
+        if st.session_state.use_sam2:
+            st.subheader("Reference Image")
+            process_image("reference")
+            
+            st.subheader("Base Image")
+            process_image("base")
+        else:
+            st.info("SAM2 is not being used. You can directly draw masks in the Draw mode.")
 
     elif page == "Draw":
-        if not st.session_state.base_mask_created or not st.session_state.reference_mask_created:
-            st.warning("Please create masks for both images in the Point mode first.")
-        else:
-            col1, col2 = st.columns(2)
-            show_base_mask = st.checkbox("Show Base Mask", value=True, key="show_base_mask")
-            show_ref_mask = st.checkbox("Show Reference Mask on Base", value=False, key="show_ref_mask")
+        col1, col2 = st.columns(2)
+        show_base_mask = st.checkbox("Show Base Mask", value=True, key="show_base_mask")
+        show_ref_mask = st.checkbox("Show Reference Mask", value=True, key="show_ref_mask")
+        clone_ref_mask = st.checkbox("Clone Reference Mask to Base", value=False, key="clone_ref_mask")
 
-            with col1:
-                st.subheader("Base Image")
-                process_image_drawing("base", col1, show_base_mask, show_ref_mask)
+        with col1:
+            st.subheader("Base Image")
+            process_image_drawing("base", col1, show_base_mask, clone_ref_mask)
 
-            with col2:
-                st.subheader("Reference Image")
-                process_image_drawing("reference", col2)
+        with col2:
+            st.subheader("Reference Image")
+            process_image_drawing("reference", col2, show_ref_mask, False)
 
-            if show_ref_mask:
-                st.session_state["base_canvas_data"] = st.session_state.get("reference_canvas_data", {"version": "4.4.0", "objects": []})
-
-            if st.button("Submit Mask Data"):
-                if "base_updated_mask" in st.session_state and "reference_updated_mask" in st.session_state:
-                    base_mask = np.array(st.session_state["base_updated_mask"])
-                    ref_mask = np.array(st.session_state["reference_updated_mask"])
-
-                    buffered_base = BytesIO()
-                    Image.fromarray(base_mask).save(buffered_base, format="PNG")
-                    base64_base = base64.b64encode(buffered_base.getvalue()).decode()
-
-                    buffered_ref = BytesIO()
-                    Image.fromarray(ref_mask).save(buffered_ref, format="PNG")
-                    base64_ref = base64.b64encode(buffered_ref.getvalue()).decode()
-
-                    response = requests.post(
-                        os.getenv('BACKEND_URL'),
-                        json={
-                            "base_image": base_url,
-                            "reference_image": reference_url,
-                            "base_mask": base64_base,
-                            "reference_mask": base64_ref,
-                            "email": email
-                        }
-                    )
-
-                    if response.status_code == 200:
-                        st.success("Mask data submitted successfully!")
-                    else:
-                        st.error(f"Failed to submit mask data. Status code: {response.status_code}")
-                else:
-                    st.error("Please create masks for both images before submitting.")
+        if st.button("Submit Mask Data"):
+            submit_mask_data(base_url, reference_url, email)
 
 if __name__ == "__main__":
     main()
