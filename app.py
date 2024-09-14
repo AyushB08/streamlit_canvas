@@ -13,7 +13,7 @@ import json
 
 @st.cache_data
 def load_runpod_info():
-    load_dotenv("../../.env")
+    load_dotenv("./.env")
     
     url = os.getenv("SAM2_ENDPOINT")
     key = os.getenv("RUNPOD_KEY")
@@ -371,7 +371,7 @@ def main():
             """
     st.markdown(streamlit_style, unsafe_allow_html=True)
 
-    st.title("SAM2: Point-Based and Draw")
+    st.title("Mask Creation")
 
     query_params = st.query_params
     base_url = query_params.get("base_url", "")
@@ -396,14 +396,17 @@ def main():
     page = st.sidebar.radio("Select Mode", ["Point", "Draw"])
 
     if page == "Point":
+        col1, col2 = st.columns(2)
         st.session_state.use_sam2 = st.checkbox("Use SAM2 for mask generation", value=False)
         
         if st.session_state.use_sam2:
-            st.subheader("Reference Image")
-            process_image("reference")
+            with col2: 
+                st.subheader("Reference Image")
+                process_image("reference")
             
-            st.subheader("Base Image")
-            process_image("base")
+            with col1:
+                st.subheader("Base Image")
+                process_image("base")
         else:
             st.info("SAM2 is not being used. You can directly draw masks in the Draw mode.")
 
