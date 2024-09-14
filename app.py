@@ -225,7 +225,6 @@ def submit_mask_data(base_url, reference_url, email):
                     "reference_mask": base64_ref,
                     "email": email
                 },
-                headers={'Content-Type': 'application/json'}
             )
 
             if response.status_code == 200:
