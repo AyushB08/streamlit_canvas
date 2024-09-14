@@ -204,14 +204,14 @@ def submit_mask_data(base_url, reference_url, email):
 
         buffered_base = BytesIO()
 
-        base_mask_img = Image.fromarray(base_mask)
+        base_mask_img = Image.fromarray(base_mask).convert("L")
         base_mask_img.save(buffered_base, format="PNG")
 
         base64_base = base64.b64encode(buffered_base.getvalue()).decode("utf-8")
 
         buffered_ref = BytesIO()
 
-        reference_mask_img = Image.fromarray(ref_mask)
+        reference_mask_img = Image.fromarray(ref_mask).convert("L")
         reference_mask_img.save(buffered_ref, format="PNG")
 
         base64_ref = base64.b64encode(buffered_ref.getvalue()).decode("utf-8")
