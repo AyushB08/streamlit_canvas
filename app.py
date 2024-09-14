@@ -203,12 +203,18 @@ def submit_mask_data(base_url, reference_url, email):
         ref_mask = (ref_mask > 0).astype(np.uint8) * 255
 
         buffered_base = BytesIO()
-        Image.fromarray(base_mask).save(buffered_base, format="PNG")
-        base64_base = base64.b64encode(buffered_base.getvalue())
+
+        base_mask_img = Image.fromarray(base_mask)
+        base_mask_img.save(buffered_base, format="PNG")
+
+        base64_base = base64.b64encode(buffered_base.getvalue()).decode("utf-8")
 
         buffered_ref = BytesIO()
-        Image.fromarray(ref_mask).save(buffered_ref, format="PNG")
-        base64_ref = base64.b64encode(buffered_ref.getvalue())
+
+        reference_mask_img = Image.fromarray(ref_mask)
+        reference_mask_img.save(buffered_ref, format="PNG")
+
+        base64_ref = base64.b64encode(buffered_ref.getvalue()).decode("utf-8")
 
         backend_url = "https://platform-backend-64nm.onrender.com/upload-mask"
         if not backend_url:
