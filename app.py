@@ -307,7 +307,6 @@ def process_image_drawing(prefix, column, show_mask=True, clone_mask=False):
         
         if canvas_result.image_data is not None:
             st.session_state[f"{prefix}_updated_mask"] = canvas_result.image_data[:,:,3]
-            print(canvas_result.image_data)
         
         st.session_state[f"{prefix}_canvas_data"] = canvas_result.json_data
 
