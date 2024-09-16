@@ -202,8 +202,8 @@ def submit_mask_data(base_url, reference_url, email):
         base_arr = (base_arr > 0).astype(np.uint8) * 255
         ref_arr = (ref_arr > 0).astype(np.uint8) * 255
 
-        base_mask = Image.fromarray(base_arr).convert("L")
-        ref_mask = Image.fromarray(ref_arr).convert("L")
+        base_mask = Image.fromarray(base_arr).convert("L").resize((512, 512))
+        ref_mask = Image.fromarray(ref_arr).convert("L").resize((512, 512))
 
         buffered_base = BytesIO()
 
