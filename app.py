@@ -204,14 +204,14 @@ def submit_mask_data(base_url, reference_url, email):
 
         buffered_base = BytesIO()
 
-        base_mask_img = Image.fromarray(base_mask)
+        base_mask_img = st.session_state["base_updated_mask"]
         base_mask_img.save(buffered_base, format="PNG")
 
         base64_base = base64.b64encode(buffered_base.getvalue()).decode("utf-8")
 
         buffered_ref = BytesIO()
 
-        reference_mask_img = Image.fromarray(ref_mask)
+        reference_mask_img = st.session_state["reference_updated_mask"]
         reference_mask_img.save(buffered_ref, format="PNG")
 
         base64_ref = base64.b64encode(buffered_ref.getvalue()).decode("utf-8")
@@ -220,9 +220,6 @@ def submit_mask_data(base_url, reference_url, email):
         if not backend_url:
             st.error("Backend URL is not set. Please check your environment variables.")
             return
-        
-        st.image(base_mask_img, "base_mask")
-        st.image(reference_mask_img, "ref_mask")
 
         try:
             response = requests.post(
