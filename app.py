@@ -196,8 +196,8 @@ def create_mask(prefix):
 
 def submit_mask_data(base_url, reference_url, email):
     if "base_updated_mask" in st.session_state and "reference_updated_mask" in st.session_state:
-        base_mask = Image.fromarray((st.session_state["base_updated_mask"] * 255).astype(np.unit8)).convert("L")
-        ref_mask = Image.fromarray((st.session_state["reference_updated_mask"] * 255).astype(np.unit8)).convert("L")
+        base_mask = Image.fromarray((st.session_state["base_updated_mask"] * 255).astype(np.uint8)).convert("L")
+        ref_mask = Image.fromarray((st.session_state["reference_updated_mask"] * 255).astype(np.uint8)).convert("L")
 
         base_mask = (base_mask > 0).astype(np.uint8) * 255
         ref_mask = (ref_mask > 0).astype(np.uint8) * 255
