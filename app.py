@@ -196,25 +196,22 @@ def create_mask(prefix):
 
 def submit_mask_data(base_url, reference_url, email):
     if "base_updated_mask" in st.session_state and "reference_updated_mask" in st.session_state:
-        base_mask = np.array(st.session_state["base_updated_mask"])
-        ref_mask = np.array(st.session_state["reference_updated_mask"])
-
-        st.image(st.session_state["base_updated_mask"])
-        st.image(st.session_state["reference_updated_mask"])
+        base_mask = Image.fromarray(st.session_state["base_updated_mask"]).convert("L")
+        ref_mask = Image.fromarray(st.session_state["reference_updated_mask"]).convert("L")
 
         base_mask = (base_mask > 0).astype(np.uint8) * 255
         ref_mask = (ref_mask > 0).astype(np.uint8) * 255
 
         buffered_base = BytesIO()
 
-        base_mask_img = st.session_state["base_updated_mask"]
+        base_mask_img = base_mask
         base_mask_img.save(buffered_base, format="PNG")
 
         base64_base = base64.b64encode(buffered_base.getvalue()).decode("utf-8")
 
         buffered_ref = BytesIO()
 
-        reference_mask_img = st.session_state["reference_updated_mask"]
+        reference_mask_img = ref_mask
         reference_mask_img.save(buffered_ref, format="PNG")
 
         base64_ref = base64.b64encode(buffered_ref.getvalue()).decode("utf-8")
@@ -309,7 +306,8 @@ def process_image_drawing(prefix, column, show_mask=True, clone_mask=False):
         )
         
         if canvas_result.image_data is not None:
-            st.session_state[f"{prefix}_updated_mask"] = Image.fromarray(canvas_result.image_data[:,:,3], mode='L')
+            st.session_state[f"{prefix}_updated_mask"] = canvas_result.image_data[:,:,3]
+            print(canvas_result.image_data)
         
         st.session_state[f"{prefix}_canvas_data"] = canvas_result.json_data
 
