@@ -220,9 +220,9 @@ def submit_mask_data(base_url, reference_url, email):
         if not backend_url:
             st.error("Backend URL is not set. Please check your environment variables.")
             return
-
-        print(f'base: {base64_base}')
-        print(f'reference: {base64_ref}')
+        
+        st.text(f'base mask": {base64_base}')
+        st.text(f'base mask": {base64_ref}')
 
         try:
             response = requests.post(
