@@ -199,6 +199,9 @@ def submit_mask_data(base_url, reference_url, email):
         base_mask = np.array(st.session_state["base_updated_mask"])
         ref_mask = np.array(st.session_state["reference_updated_mask"])
 
+        st.image(st.session_state["base_updated_mask"])
+        st.image(st.session_state["reference_updated_mask"])
+
         base_mask = (base_mask > 0).astype(np.uint8) * 255
         ref_mask = (ref_mask > 0).astype(np.uint8) * 255
 
