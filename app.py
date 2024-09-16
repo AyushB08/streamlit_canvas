@@ -202,21 +202,15 @@ def submit_mask_data(base_url, reference_url, email):
         base_arr = (base_arr > 0).astype(np.uint8) * 255
         ref_arr = (ref_arr > 0).astype(np.uint8) * 255
 
-        base_mask = Image.fromarray(base_arr).convert("L").resize((512, 512))
-        ref_mask = Image.fromarray(ref_arr).convert("L").resize((512, 512))
+        base_mask = Image.fromarray(base_arr).convert("L").resize(st.session_state.base_original_size)
+        ref_mask = Image.fromarray(ref_arr).convert("L").resize(st.session_state.reference_original_size)
 
         buffered_base = BytesIO()
-
-        base_mask_img = base_mask
-        base_mask_img.save(buffered_base, format="PNG")
-
+        base_mask.save(buffered_base, format="PNG")
         base64_base = base64.b64encode(buffered_base.getvalue()).decode("utf-8")
 
         buffered_ref = BytesIO()
-
-        reference_mask_img = ref_mask
-        reference_mask_img.save(buffered_ref, format="PNG")
-
+        ref_mask.save(buffered_ref, format="PNG")
         base64_ref = base64.b64encode(buffered_ref.getvalue()).decode("utf-8")
 
         backend_url = "https://platform-backend-64nm.onrender.com/upload-mask"
@@ -362,11 +356,13 @@ def fetch_and_resize_image(source, max_size=512):
     else:
         image = load_image_from_base64(source).convert("RGB")
     
-    width, height = image.size
+    original_width, original_height = image.size
+    width, height = original_width, original_height
     if max(width, height) > max_size:
         ratio = max_size / max(width, height)
-        image = image.resize((int(width * ratio), int(height * ratio)), Image.LANCZOS)
-    return image
+        width, height = int(width * ratio), int(height * ratio)
+        image = image.resize((width, height), Image.LANCZOS)
+    return image, (original_width, original_height)
 
 def main():
     streamlit_style = """
@@ -392,11 +388,11 @@ def main():
         return
 
     if 'base_original_image' not in st.session_state:
-        st.session_state.base_original_image = fetch_and_resize_image(base_url)
+        st.session_state.base_original_image, st.session_state.base_original_size = fetch_and_resize_image(base_url)
         st.session_state.base_image = st.session_state.base_original_image.resize((256, 256))
     
     if 'reference_original_image' not in st.session_state:
-        st.session_state.reference_original_image = fetch_and_resize_image(reference_url)
+        st.session_state.reference_original_image, st.session_state.reference_original_size = fetch_and_resize_image(reference_url)
         st.session_state.reference_image = st.session_state.reference_original_image.resize((256, 256))
 
     if 'use_sam2' not in st.session_state:
