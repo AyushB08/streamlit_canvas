@@ -6,3 +6,4 @@ matplotlib
 opencv-python-headless
 python-dotenv
 requests
+pymongo
