@@ -10,6 +10,8 @@ import os
 from dotenv import load_dotenv
 import requests
 import json
+from pymongo import MongoClient
+from pymongo.server_api import ServerApi
 
 @st.cache_data
 def load_runpod_info():
@@ -19,6 +21,15 @@ def load_runpod_info():
     key = os.getenv("RUNPOD_KEY")
 
     return url, key
+
+@st.cache_resource
+def load_db_connection():
+    load_dotenv("./.env")
+    
+    uri = os.getenv("MONGODB")
+    client = MongoClient(uri, server_api = ServerApi('1'))
+
+    return client
 
 def scale_point(point, from_size, to_size):
     return (
@@ -52,6 +63,7 @@ def load_image_from_base64(base64_str: str) -> Image.Image:
     return image
 
 endpoint_url, key = load_runpod_info()
+db_client = load_db_connection()
 
 def SAM2(image: Image, points: np.array, labels: np.array, rgba: tuple):
     image_b64 = image_to_base64(image)
@@ -206,38 +218,56 @@ def submit_mask_data(base_url, reference_url, email):
         ref_mask = Image.fromarray(ref_arr).convert("L").resize(st.session_state.reference_original_size)
 
         buffered_base = BytesIO()
-        base_mask.save(buffered_base, format="PNG")
+        base_mask.save(buffered_base, format="PNG", optimize = True)
         base64_base = base64.b64encode(buffered_base.getvalue()).decode("utf-8")
 
         buffered_ref = BytesIO()
-        ref_mask.save(buffered_ref, format="PNG")
+        ref_mask.save(buffered_ref, format="PNG", optimize = True)
         base64_ref = base64.b64encode(buffered_ref.getvalue()).decode("utf-8")
 
-        backend_url = "https://platform-backend-64nm.onrender.com/upload-mask"
-        if not backend_url:
-            st.error("Backend URL is not set. Please check your environment variables.")
-            return
+        db_data_submit = {
+            "base_image": base_url,
+            "reference_image": reference_url,
+            "base_mask": base64_base,
+            "reference_mask": base64_ref,
+            "email": email
+        }
 
         try:
-            response = requests.post(
-                backend_url,
-                json={
-                    "base_image": base_url,
-                    "reference_image": reference_url,
-                    "base_mask": base64_base,
-                    "reference_mask": base64_ref,
-                    "email": email
-                },
-                headers={'Content-Type': 'application/json'}
-            )
+            collection = db_client["OpenNLP"]["uploads"]
+            collection.insert_one(db_data_submit)
 
-            if response.status_code == 200:
-                st.success("Mask data submitted successfully!")
-            else:
-                st.error(f"Failed to submit mask data. Status code: {response.status_code}")
-                st.error(f"Response content: {response.text}")
-        except requests.exceptions.RequestException as e:
+            st.success("Mask data submitted successfully!")
+
+        except Exception as e:
             st.error(f"An error occurred while submitting the mask data: {str(e)}")
+            
+
+        # backend_url = "https://platform-backend-64nm.onrender.com/upload-mask"
+        # if not backend_url:
+        #     st.error("Backend URL is not set. Please check your environment variables.")
+        #     return
+
+        # try:
+        #     response = requests.post(
+        #         backend_url,
+        #         json={
+        #             "base_image": base_url,
+        #             "reference_image": reference_url,
+        #             "base_mask": base64_base,
+        #             "reference_mask": base64_ref,
+        #             "email": email
+        #         },
+        #         headers={'Content-Type': 'application/json'}
+        #     )
+
+        #     if response.status_code == 200:
+        #         st.success("Mask data submitted successfully!")
+        #     else:
+        #         st.error(f"Failed to submit mask data. Status code: {response.status_code}")
+        #         st.error(f"Response content: {response.text}")
+        # except requests.exceptions.RequestException as e:
+        #     st.error(f"An error occurred while submitting the mask data: {str(e)}")
     else:
         st.error("Please create masks for both images before submitting.")
     
@@ -402,7 +432,7 @@ def main():
 
     if page == "Point":
         col1, col2 = st.columns(2)
-        st.session_state.use_sam2 = st.checkbox("Use SAM2 for mask generation", value=False)
+        st.session_state.use_sam2 = st.checkbox("Use pointing for mask generation", value=False)
         
         if st.session_state.use_sam2:
             with col2: 
@@ -413,7 +443,7 @@ def main():
                 st.subheader("Base Image")
                 process_image("base")
         else:
-            st.info("SAM2 is not being used. You can directly draw masks in the Draw mode.")
+            st.info("Point mode is not being used. You can directly draw masks in the Draw mode.")
 
     elif page == "Draw":
         col1, col2 = st.columns(2)
