@@ -379,31 +379,6 @@ def create_image_object(width, height, image_b64):
         "filters": []
     }
 
-def show_instructions_button(mode):
-    with st.expander("Click here for instructions"):
-        if mode == "Point":
-            st.markdown("""
-            ### How to use Point Mode:
-            1. Select point type (Green + or Red -) for each image
-            2. **Green (+)** : Click to mark areas you want to include in the mask
-            3. **Red (-)** : Click to mark areas you want to exclude from the mask
-            4. Click "Create Mask" button when you're done placing points
-            5. The generated mask will appear below the image
-            6. The masks will be transferred to Draw Mode
-            7. Switch to Draw Mode to view and refine the mask if needed
-            8. In Draw Mode, you can submit data to continue to the next steps.
-            """)
-        else:  
-            st.markdown("""
-            ### How to use Draw Mode:
-            1. Select a drawing tool from the dropdown (freedraw, line, rect, circle, or transform)
-            2. Adjust the stroke width using the slider
-            3. Draw directly on the images to create or modify masks
-            4. Use the transform tool to adjust existing drawings
-            5. The "Clone Reference Mask to Base" option will copy the reference mask to the base image
-            6. Click "Submit Mask Data" when you're satisfied with both masks
-            """)
-
 def fetch_and_resize_image(source, max_size=512):
     if source.startswith('http'):
         response = requests.get(source)
@@ -450,31 +425,27 @@ def main():
         st.session_state.reference_original_image, st.session_state.reference_original_size = fetch_and_resize_image(reference_url)
         st.session_state.reference_image = st.session_state.reference_original_image.resize((256, 256))
 
-    
-    st.session_state.use_sam2 = True
+    if 'use_sam2' not in st.session_state:
+        st.session_state.use_sam2 = False
 
     page = st.sidebar.radio("Select Mode", ["Point", "Draw"])
 
     if page == "Point":
-        show_instructions_button("Point")
-        
-        
         col1, col2 = st.columns(2)
+        st.session_state.use_sam2 = st.checkbox("Use pointing for mask generation", value=False)
         
-        
-       
-        with col2: 
-            st.subheader("Reference Image")
-            process_image("reference")
-        
-        with col1:
-            st.subheader("Base Image")
-            process_image("base")
-      
+        if st.session_state.use_sam2:
+            with col2: 
+                st.subheader("Reference Image")
+                process_image("reference")
+            
+            with col1:
+                st.subheader("Base Image")
+                process_image("base")
+        else:
+            st.info("Point mode is not being used. You can directly draw masks in the Draw mode.")
 
     elif page == "Draw":
-        show_instructions_button("Draw")
-     
         col1, col2 = st.columns(2)
         show_base_mask = True
         if st.session_state.use_sam2:
