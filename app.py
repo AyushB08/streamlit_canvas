@@ -243,31 +243,31 @@ def submit_mask_data(base_url, reference_url, email):
             st.error(f"An error occurred while submitting the mask data: {str(e)}")
             
 
-        # backend_url = "https://platform-backend-64nm.onrender.com/upload-mask"
-        # if not backend_url:
-        #     st.error("Backend URL is not set. Please check your environment variables.")
-        #     return
+        backend_url = "https://platform-backend-64nm.onrender.com/upload-mask"
+        if not backend_url:
+            st.error("Backend URL is not set. Please check your environment variables.")
+            return
 
-        # try:
-        #     response = requests.post(
-        #         backend_url,
-        #         json={
-        #             "base_image": base_url,
-        #             "reference_image": reference_url,
-        #             "base_mask": base64_base,
-        #             "reference_mask": base64_ref,
-        #             "email": email
-        #         },
-        #         headers={'Content-Type': 'application/json'}
-        #     )
+        try:
+            response = requests.post(
+                backend_url,
+                json={
+                    "base_image": base_url,
+                    "reference_image": reference_url,
+                    "base_mask": base64_base,
+                    "reference_mask": base64_ref,
+                    "email": email
+                },
+                headers={'Content-Type': 'application/json'}
+            )
 
-        #     if response.status_code == 200:
-        #         st.success("Mask data submitted successfully!")
-        #     else:
-        #         st.error(f"Failed to submit mask data. Status code: {response.status_code}")
-        #         st.error(f"Response content: {response.text}")
-        # except requests.exceptions.RequestException as e:
-        #     st.error(f"An error occurred while submitting the mask data: {str(e)}")
+            if response.status_code == 200:
+                st.success("Mask data submitted successfully!")
+            else:
+                st.error(f"Failed to submit mask data. Status code: {response.status_code}")
+                st.error(f"Response content: {response.text}")
+        except requests.exceptions.RequestException as e:
+            st.error(f"An error occurred while submitting the mask data: {str(e)}")
     else:
         st.error("Please create masks for both images before submitting.")
     
